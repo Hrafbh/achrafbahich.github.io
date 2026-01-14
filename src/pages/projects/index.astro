@@ -1,0 +1,18 @@
+---
+import { projects } from "../../data/projects.js";
+---
+
+<html lang="fr">
+  <head><title>Projects</title></head>
+  <body>
+    <h1>Projects</h1>
+    <ul>
+      {projects.map(p => (
+        <li>
+          <a href={`/projects/${p.slug}`}>{p.title}</a> — {p.category}
+          <p>{p.summary}</p>
+        </li>
+      ))}
+    </ul>
+  </body>
+</html>

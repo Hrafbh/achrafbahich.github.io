@@ -3,16 +3,32 @@ import { projects } from "../../data/projects.js";
 ---
 
 <html lang="fr">
-  <head><title>Projects</title></head>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Projects | Achraf Bahich</title>
+  </head>
   <body>
-    <h1>Projects</h1>
-    <ul>
-      {projects.map(p => (
-        <li>
-          <a href={`/projects/${p.slug}`}>{p.title}</a> — {p.category}
-          <p>{p.summary}</p>
-        </li>
-      ))}
-    </ul>
+    <main style="max-width: 1050px; margin: 0 auto; padding: 18px;">
+      <h1>Projects</h1>
+      <p>Une sélection de projets Data Engineering, Data Science et Analytics.</p>
+
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px;">
+        {projects.map(p => (
+          <a href={`/projects/${p.slug}`} style="border:1px solid #eee;border-radius:14px;padding:14px;text-decoration:none;color:inherit;">
+            <div style="display:flex;justify-content:space-between;gap:10px;align-items:baseline;">
+              <h2 style="margin:0;font-size:18px;">{p.title}</h2>
+              <span style="color:#666;font-size:13px;">{p.date}</span>
+            </div>
+            <p style="margin:6px 0;color:#444;">{p.summary}</p>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;">
+              {p.tags.slice(0,5).map(t => (
+                <span style="font-size:12px;border:1px solid #eee;border-radius:999px;padding:2px 8px;color:#555;">{t}</span>
+              ))}
+            </div>
+          </a>
+        ))}
+      </div>
+    </main>
   </body>
 </html>

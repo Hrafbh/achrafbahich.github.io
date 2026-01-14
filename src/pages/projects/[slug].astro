@@ -2,42 +2,58 @@
 import { projects } from "../../data/projects.js";
 
 export function getStaticPaths() {
-  return projects.map(p => ({ params: { slug: p.slug } }));
+  return projects.map((p) => ({ params: { slug: p.slug } }));
 }
 
 const { slug } = Astro.params;
-const project = projects.find(p => p.slug === slug);
-
+const project = projects.find((p) => p.slug === slug);
 if (!project) throw new Error("Project not found: " + slug);
 ---
 
 <html lang="fr">
-  <head><title>{project.title}</title></head>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>{project.title} | Achraf Bahich</title>
+  </head>
   <body>
-    <a href="/projects">← Back</a>
-    <h1>{project.title}</h1>
-    <p><b>{project.category}</b></p>
-    <p>{project.summary}</p>
+    <main style="max-width: 1050px; margin: 0 auto; padding: 18px;">
+      <a href="/projects" style="text-decoration:none;color:#555;">← Projects</a>
 
-    <h2>Stack</h2>
-    <ul>
-      {project.stack.map(s => <li>{s}</li>)}
-    </ul>
+      <h1 style="margin-bottom:0;">{project.title}</h1>
+      <p style="margin-top:6px;color:#666;">
+        <b>{project.category}</b> · {project.date}
+      </p>
 
-    <h2>Links</h2>
-    <ul>
-      <li><a href={project.links.repo} target="_blank">Repository</a></li>
-      <li><a href={project.links.demo} target="_blank">Live demo</a></li>
-    </ul>
+      <p style="color:#333;line-height:1.5;">{project.summary}</p>
 
-    <h2>Showcase</h2>
-    {project.showcase?.type === "iframe" ? (
-      <iframe
-        src={project.showcase.url}
-        style="width:100%;height:760px;border:1px solid #ddd;border-radius:12px;"
-      />
-    ) : (
-      <p>No showcase configured.</p>
-    )}
+      <h2>Stack</h2>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        {project.tags.map((t) => (
+          <span style="font-size:12px;border:1px solid #eee;border-radius:999px;padding:2px 8px;color:#555;">{t}</span>
+        ))}
+      </div>
+
+      <h2 style="margin-top:18px;">Showcase</h2>
+
+      {project.showcase?.type === "highlights" ? (
+        <ul>
+          {project.showcase.bullets.map((b) => <li>{b}</li>)}
+        </ul>
+      ) : project.showcase?.type === "iframe" ? (
+        <iframe
+          src={project.showcase.url}
+          style="width:100%;height:760px;border:1px solid #ddd;border-radius:14px;"
+        />
+      ) : (
+        <p>Aucune démo configurée pour le moment.</p>
+      )}
+
+      <h2 style="margin-top:18px;">Links</h2>
+      <ul>
+        <li><a href={project.links.repo} target="_blank">Repository</a></li>
+        {project.links.demo ? <li><a href={project.links.demo} target="_blank">Live demo</a></li> : null}
+      </ul>
+    </main>
   </body>
 </html>

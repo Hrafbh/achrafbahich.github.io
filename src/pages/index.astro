@@ -1,12 +1,28 @@
 ---
-import Welcome from '../components/Welcome.astro';
-import Layout from '../layouts/Layout.astro';
-
-// Welcome to Astro! Wondering what to do next? Check out the Astro documentation at https://docs.astro.build
-// Don't want to use any of this? Delete everything in this file, the `assets`, `components`, and `layouts` directories, and start fresh.
+import { ui } from "../i18n/ui";
 ---
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{ui.en.site_title}</title>
+  </head>
+  <body style="margin:0; font-family: ui-sans-serif, system-ui; background:#0b0c10; color:#e8eaf0;">
+    <main style="max-width:900px; margin:0 auto; padding:40px 20px;">
+      <h1 style="margin:0 0 10px;">{ui.en.choose_language} / {ui.fr.choose_language}</h1>
+      <p style="opacity:.75; margin:0 0 24px;">
+        {ui.en.choose_language_hint} / {ui.fr.choose_language_hint}
+      </p>
 
-<Layout>
-	<Welcome />
-	<a href="/projects">See projects</a>
-</Layout>
+      <div style="display:flex; gap:12px; flex-wrap:wrap;">
+        <a href="/fr/" style="padding:12px 16px; border:1px solid rgba(255,255,255,.14); border-radius:14px; background:rgba(255,255,255,.04); text-decoration:none; color:inherit;">
+          Continuer en Français → /fr/
+        </a>
+        <a href="/en/" style="padding:12px 16px; border:1px solid rgba(255,255,255,.14); border-radius:14px; background:rgba(255,255,255,.04); text-decoration:none; color:inherit;">
+          Continue in English → /en/
+        </a>
+      </div>
+    </main>
+  </body>
+</html>

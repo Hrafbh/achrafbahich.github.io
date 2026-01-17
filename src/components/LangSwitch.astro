@@ -1,0 +1,25 @@
+---
+import type { Lang } from "../i18n/config";
+
+const { lang } = Astro.props as { lang: Lang };
+
+const pathname = Astro.url.pathname;
+
+// Remplace uniquement le 1er segment /fr ou /en en gardant le reste du chemin
+function switchPath(target: Lang) {
+  if (pathname === "/" || pathname === "") return `/${target}/`;
+  if (/^\/(fr|en)(\/|$)/.test(pathname)) {
+    return pathname.replace(/^\/(fr|en)(?=\/|$)/, `/${target}`);
+  }
+  // Si jamais on est hors i18n (cas rare), fallback
+  return `/${target}/`;
+}
+
+const other: Lang = lang === "fr" ? "en" : "fr";
+const href = switchPath(other);
+---
+<a class="btn" href={href} aria-label="Switch language">
+  <span style="opacity:.8;">{lang.toUpperCase()}</span>
+  <span style="opacity:.6;">→</span>
+  <span>{other.toUpperCase()}</span>
+</a>

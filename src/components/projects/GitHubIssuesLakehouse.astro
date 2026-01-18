@@ -1,0 +1,239 @@
+---
+import type { Lang } from "../../i18n/config";
+
+// CSV read at build-time (no node:fs needed)
+import kpiCsv from "../../data/kpis/github-issues-lakehouse/kpi_monthly_global.csv?raw";
+
+type Project = any; // on garde simple ici (on typpe mieux plus tard)
+const { lang, project } = Astro.props as { lang: Lang; project: Project };
+
+// ---------- helpers ----------
+type Row = Record<string, string>;
+
+function toNum(v: string | undefined): number | null {
+  if (v == null) return null;
+  const trimmed = v.trim();
+  if (!trimmed) return null;
+  const n = Number(trimmed);
+  return Number.isFinite(n) ? n : null;
+}
+
+function parseCsv(text: string): Row[] {
+  const lines = text.trim().split(/\r?\n/);
+  if (lines.length < 2) return [];
+  const headers = lines[0].split(",").map((h) => h.trim());
+
+  return lines.slice(1).map((line) => {
+    const cols = line.split(",");
+    const row: Row = {};
+    headers.forEach((h, i) => (row[h] = (cols[i] ?? "").trim()));
+    return row;
+  });
+}
+
+function fmtInt(n: number | null): string {
+  if (n == null) return "—";
+  const locale = lang === "fr" ? "fr-FR" : "en-US";
+  return Math.round(n).toLocaleString(locale);
+}
+
+function fmtPct(x: number | null): string {
+  if (x == null) return "—";
+  return `${Math.round(x * 100)}%`;
+}
+
+function fmtDaysFromHours(hours: number | null): string {
+  if (hours == null) return "—";
+  const days = hours / 24;
+  return `${days.toFixed(1)} ${lang === "fr" ? "jours" : "days"}`;
+}
+
+const sectionTitle = (fr: string, en: string) => (lang === "fr" ? fr : en);
+
+// ---------- parse KPIs ----------
+type KpiRow = {
+  month: string;
+  created_count: number | null;
+  closed_count: number | null;
+  backlog_end: number | null;
+  median_resolution_hours: number | null;
+  share_closed_within_72h: number | null;
+  share_closed_within_336h: number | null;
+};
+
+const rows: KpiRow[] = parseCsv(kpiCsv).map((r) => ({
+  month: r.month ?? "",
+  created_count: toNum(r.created_count),
+  closed_count: toNum(r.closed_count),
+  backlog_end: toNum(r.backlog_end),
+  median_resolution_hours: toNum(r.median_resolution_hours),
+  share_closed_within_72h: toNum(r.share_closed_within_72h),
+  share_closed_within_336h: toNum(r.share_closed_within_336h),
+}));
+
+const candidates = rows.filter((r) => (r.closed_count ?? 0) >= 20);
+const ref = (candidates.length ? candidates[candidates.length - 1] : rows[rows.length - 1]) ?? null;
+
+const kpi = ref
+  ? {
+      month: ref.month,
+      created: ref.created_count,
+      closed: ref.closed_count,
+      backlogEnd: ref.backlog_end,
+      medianDays: fmtDaysFromHours(ref.median_resolution_hours),
+      share72: ref.share_closed_within_72h,
+      share336: ref.share_closed_within_336h,
+    }
+  : null;
+
+const kpiNote = ref
+  ? candidates.length
+    ? sectionTitle(
+        `KPIs affichés sur le dernier mois avec volume (≥ 20 tickets fermés) : ${ref.month}.`,
+        `KPIs shown for the latest month with enough volume (≥ 20 closed tickets): ${ref.month}.`
+      )
+    : sectionTitle(
+        `KPIs affichés sur le dernier mois disponible : ${ref.month}.`,
+        `KPIs shown for the latest available month: ${ref.month}.`
+      )
+  : sectionTitle(
+      "Aucun KPI trouvé dans le CSV (vérifie le fichier).",
+      "No KPIs found in the CSV (please check the file)."
+    );
+
+const title = project.title?.[lang] ?? "GitHub Issues Lakehouse";
+const summary = project.summary?.[lang] ?? "";
+---
+<section class="card" style="padding:22px;">
+  <h1 style="margin:0 0 10px; font-size:28px;">{title}</h1>
+  <p style="margin:0; opacity:.8; max-width:80ch; line-height:1.5;">{summary}</p>
+
+  <div style="margin-top:14px; display:flex; gap:10px; flex-wrap:wrap;">
+    <a class="btn" href={project.links.repo} target="_blank" rel="noreferrer">
+      {lang === "fr" ? "Ouvrir le repo" : "Open repository"}
+    </a>
+    {project.links.demo
+      ? <a class="btn" href={project.links.demo} target="_blank" rel="noreferrer">
+          {lang === "fr" ? "Voir la démo" : "View demo"}
+        </a>
+      : null}
+  </div>
+</section>
+
+<section style="margin-top:18px;">
+  <h2 style="margin:0 0 10px; font-size:18px; opacity:.92;">
+    {sectionTitle("Architecture (Bronze / Silver / Gold)", "Architecture (Bronze / Silver / Gold)")}
+  </h2>
+
+  <div class="grid grid-3">
+    <div class="card" style="padding:16px;">
+      <div style="font-weight:800;">Bronze (raw)</div>
+      <ul style="margin:10px 0 0; opacity:.78; line-height:1.45;">
+        <li>{sectionTitle("Extraction via GitHub API", "Extract via GitHub API")}</li>
+        <li>{sectionTitle("Stockage brut JSONL horodaté", "Timestamped raw JSONL storage")}</li>
+        <li>{sectionTitle("Traçabilité & reproductibilité", "Traceability & reproducibility")}</li>
+      </ul>
+    </div>
+
+    <div class="card" style="padding:16px;">
+      <div style="font-weight:800;">Silver (curated)</div>
+      <ul style="margin:10px 0 0; opacity:.78; line-height:1.45;">
+        <li><code>ticket_kind</code>: defect/docs/enhancement/question</li>
+        <li><code>priority_tier</code>: P0/P1/P2/NA</li>
+        <li><code>component</code> + <code>resolution_hours</code></li>
+        <li>{sectionTitle("Exports CSV + Parquet", "CSV + Parquet exports")}</li>
+      </ul>
+    </div>
+
+    <div class="card" style="padding:16px;">
+      <div style="font-weight:800;">Gold (KPIs)</div>
+      <ul style="margin:10px 0 0; opacity:.78; line-height:1.45;">
+        <li>{sectionTitle("KPIs mensuels adaptés GitHub", "GitHub-adapted monthly KPIs")}</li>
+        <li>{sectionTitle("Flow + Backlog + Resolution speed", "Flow + Backlog + Resolution speed")}</li>
+        <li>{sectionTitle("Buckets (24/72/168/336h)", "Time buckets (24/72/168/336h)")}</li>
+        <li>{sectionTitle("Global + par component/priorité", "Global + by component/priority")}</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section style="margin-top:18px;">
+  <h2 style="margin:0 0 10px; font-size:18px; opacity:.92;">
+    {sectionTitle("KPIs clés (Gold)", "Key KPIs (Gold)")}
+  </h2>
+
+  <p style="margin:0 0 12px; opacity:.72;">{kpiNote}</p>
+
+  <div class="grid" style="grid-template-columns: repeat(3, minmax(0, 1fr));">
+    <div class="card" style="padding:16px;">
+      <div style="opacity:.7; font-size:12px;">{sectionTitle("Mois", "Month")}</div>
+      <div style="font-weight:900; font-size:22px; margin-top:6px;">{kpi?.month ?? "—"}</div>
+    </div>
+
+    <div class="card" style="padding:16px;">
+      <div style="opacity:.7; font-size:12px;">{sectionTitle("Defects créés", "Defects created")}</div>
+      <div style="font-weight:900; font-size:22px; margin-top:6px;">{fmtInt(kpi?.created ?? null)}</div>
+    </div>
+
+    <div class="card" style="padding:16px;">
+      <div style="opacity:.7; font-size:12px;">{sectionTitle("Defects fermés", "Defects closed")}</div>
+      <div style="font-weight:900; font-size:22px; margin-top:6px;">{fmtInt(kpi?.closed ?? null)}</div>
+    </div>
+
+    <div class="card" style="padding:16px;">
+      <div style="opacity:.7; font-size:12px;">{sectionTitle("Backlog fin (approx.)", "Backlog end (approx.)")}</div>
+      <div style="font-weight:900; font-size:22px; margin-top:6px;">{fmtInt(kpi?.backlogEnd ?? null)}</div>
+    </div>
+
+    <div class="card" style="padding:16px;">
+      <div style="opacity:.7; font-size:12px;">{sectionTitle("Médiane résolution", "Median resolution")}</div>
+      <div style="font-weight:900; font-size:18px; margin-top:6px;">{kpi?.medianDays ?? "—"}</div>
+      <div style="opacity:.65; font-size:12px; margin-top:6px;">
+        {sectionTitle("Stats (pas SLA) : lire avec les buckets.", "Stats (not SLA): interpret with buckets.")}
+      </div>
+    </div>
+
+    <div class="card" style="padding:16px;">
+      <div style="opacity:.7; font-size:12px;">{sectionTitle("Fermés ≤ 72h / ≤ 336h", "Closed ≤ 72h / ≤ 336h")}</div>
+      <div style="display:flex; gap:14px; align-items:baseline; margin-top:6px;">
+        <div style="font-weight:900; font-size:22px;">{fmtPct(kpi?.share72 ?? null)}</div>
+        <div style="opacity:.6;">/</div>
+        <div style="font-weight:900; font-size:22px;">{fmtPct(kpi?.share336 ?? null)}</div>
+      </div>
+    </div>
+  </div>
+
+  <style>
+    @media (max-width: 900px) {
+      div[style*="grid-template-columns"] { grid-template-columns: 1fr !important; }
+    }
+  </style>
+</section>
+
+<section style="margin-top:18px;">
+  <h2 style="margin:0 0 10px; font-size:18px; opacity:.92;">
+    {sectionTitle("Méthode & bonnes pratiques Data Engineering", "Method & Data Engineering practices")}
+  </h2>
+
+  <div class="card" style="padding:16px; opacity:.82; line-height:1.55;">
+    <ul style="margin:0; padding-left:18px;">
+      <li>{sectionTitle("Configuration centralisée (ex: config.yml) + paramètres explicites.", "Centralized configuration (e.g., config.yml) + explicit parameters.")}</li>
+      <li>{sectionTitle(".env pour secrets (GITHUB_TOKEN) et chemins — pas de secret en dur.", ".env for secrets (GITHUB_TOKEN) and paths — no hard-coded secrets.")}</li>
+      <li>{sectionTitle("Séparation code vs données + outputs Parquet/CSV.", "Code/data separation + Parquet/CSV outputs.")}</li>
+      <li>{sectionTitle("Développement incrémental (commit par commit) + traçabilité.", "Incremental development (commit by commit) + traceability.")}</li>
+    </ul>
+  </div>
+</section>
+
+<section style="margin-top:18px;">
+  <h2 style="margin:0 0 10px; font-size:18px; opacity:.92;">
+    {sectionTitle("Challenges résolus", "Challenges solved")}
+  </h2>
+
+  <div class="card" style="padding:16px; opacity:.82; line-height:1.55;">
+    <ul style="margin:0; padding-left:18px;">
+      <li>{sectionTitle("Erreur de config (KeyError: 'source') → correction YAML + piste: validation de config.", "Config error (KeyError: 'source') → fixed YAML + idea: config validation.")}</li>
+      <li>{sectionTitle("Tooling web bloqué (Node/Astro + permissions) → nettoyage + réinstallation.", "Web tooling blocked (Node/Astro + permissions) → cleanup + reinstall.")}</li>
+    </ul>
+  </div>
+</section>

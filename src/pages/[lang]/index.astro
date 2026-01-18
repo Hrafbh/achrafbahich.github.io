@@ -2,6 +2,8 @@
 import SiteLayout from "../../layouts/SiteLayout.astro";
 import { allLangs, type Lang } from "../../i18n/config";
 import { t } from "../../i18n/ui";
+import ProjectCard from "../../components/ProjectCard.astro"; // Importing ProjectCard component
+import { projects } from "../../data/projects"; // Adjust the path as necessary
 
 export async function getStaticPaths() {
   return allLangs.map((lang) => ({ params: { lang } }));
@@ -10,11 +12,7 @@ export async function getStaticPaths() {
 const lang = Astro.params.lang as Lang;
 
 // Placeholder (commit #2 branchera la vraie data projects)
-const featured = Array.from({ length: 3 }).map((_, i) => ({
-  title: `${t(lang, "placeholder_project")} ${i + 1}`,
-  desc: t(lang, "placeholder_desc"),
-  href: `/${lang}/projects/`,
-}));
+const featured = projects.filter((p) => p.featured).slice(0, 3);
 ---
 <SiteLayout lang={lang} title={t(lang, "site_title")} description={t(lang, "hero_subtitle")}>
   <section class="card" style="padding:22px;">
@@ -36,12 +34,7 @@ const featured = Array.from({ length: 3 }).map((_, i) => ({
     </h2>
 
     <div class="grid grid-3">
-      {featured.map((p) => (
-        <a class="card" href={p.href} style="padding:16px; display:block;">
-          <div style="font-weight:700; margin-bottom:6px;">{p.title}</div>
-          <div style="opacity:.72; font-size:14px; line-height:1.4;">{p.desc}</div>
-        </a>
-      ))}
+      {featured.map((p) => <ProjectCard lang={lang} project={p} />)}
     </div>
   </section>
 </SiteLayout>

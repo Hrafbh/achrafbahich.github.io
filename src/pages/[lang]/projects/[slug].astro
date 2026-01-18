@@ -1,8 +1,9 @@
 ---
+import SiteLayout from "../../../layouts/SiteLayout.astro";
 import { allLangs as LANGS, isLang, type Lang } from "../../../i18n/config";
 import { t } from "../../../i18n/ui";
 import { projects } from "../../../data/projects.js";
-import LangSwitch from "../../../components/LangSwitch.astro";
+import GitHubIssuesLakehouse from "../../../components/projects/GitHubIssuesLakehouse.astro";
 
 export function getStaticPaths() {
   return LANGS.flatMap((lang) =>
@@ -12,67 +13,37 @@ export function getStaticPaths() {
 
 const { lang: rawLang, slug } = Astro.params;
 const lang = (isLang(rawLang ?? "") ? rawLang : "en") as Lang;
+
 const project = projects.find((p) => p.slug === slug);
 if (!project) throw new Error("Project not found: " + slug);
 
 const title = project.title[lang];
-const summary = project.summary[lang];
-const category = project.category[lang];
-const bullets = project.showcase?.type === "highlights" && "bullets" in project.showcase ? project.showcase.bullets[lang] : [];
-
-
-// URL safe (évite l'erreur TS)
-const iframeUrl =
-  project.showcase &&
-  project.showcase.type === "iframe" &&
-  "url" in project.showcase
-    ? String(project.showcase.url)
-    : null;
+const isLakehouse = project.slug === "github-issues-lakehouse";
 ---
+<SiteLayout lang={lang} title={`${title} — ${t(lang, "site_title")}`}>
+  <div style="margin-bottom:14px;">
+    <a class="btn" href={`/${lang}/projects/`}>← {t(lang, "projects_title")}</a>
+  </div>
 
-<html lang={lang}>
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width,initial-scale=1" />
-    <title>{title} | Achraf Bahich</title>
-  </head>
-  <body>
-    <main style="max-width:1050px;margin:0 auto;padding:18px;">
-      <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;">
-        <a href={`/${lang}/projects`} style="text-decoration:none;color:#555;">
-          ← {t(lang, "projects_title")}
+  {isLakehouse ? (
+    <GitHubIssuesLakehouse lang={lang} project={project} />
+  ) : (
+    <section class="card" style="padding:22px;">
+      <h1 style="margin:0 0 10px; font-size:28px;">{title}</h1>
+      <p style="margin:0; opacity:.8; max-width:80ch; line-height:1.5;">
+        {project.summary[lang]}
+      </p>
+
+      <div style="margin-top:14px; display:flex; gap:10px; flex-wrap:wrap;">
+        <a class="btn" href={project.links.repo} target="_blank" rel="noreferrer">
+          {lang === "fr" ? "Ouvrir le repo" : "Open repository"}
         </a>
-          <LangSwitch lang={lang} />    
+        {project.links.demo
+          ? <a class="btn" href={project.links.demo} target="_blank" rel="noreferrer">
+              {lang === "fr" ? "Voir la démo" : "View demo"}
+            </a>
+          : null}
       </div>
-
-      <h1 style="margin-bottom:0;">{title}</h1>
-      <p style="margin-top:6px;color:#666;"><b>{category}</b> · {project.date}</p>
-      <p style="color:#333;line-height:1.5;">{summary}</p>
-
-      <h2>{t(lang, "stack")}</h2>
-      <div style="display:flex;gap:8px;flex-wrap:wrap;">
-        {project.tags.map((tag) => (
-          <span style="font-size:12px;border:1px solid #eee;border-radius:999px;padding:2px 8px;color:#555;">{tag}</span>
-        ))}
-      </div>
-
-      <h2 style="margin-top:18px;">Showcase</h2>
-      {project.showcase?.type === "highlights" ? (
-        <ul>{bullets.map((b) => <li>{b}</li>)}</ul>
-      ) : iframeUrl ? (
-        <iframe
-          src={iframeUrl}
-          style="width:100%;height:760px;border:1px solid #ddd;border-radius:14px;"
-        />
-      ) : (
-        <p>{t(lang, "noDemo")}</p>
-      )}
-
-      <h2 style="margin-top:18px;">{t(lang, "links")}</h2>
-      <ul>
-        <li><a href={project.links.repo} target="_blank">{t(lang, "repository")}</a></li>
-        {project.links.demo ? <li><a href={project.links.demo} target="_blank">{t(lang, "liveDemo")}</a></li> : null}
-      </ul>
-    </main>
-  </body>
-</html>
+    </section>
+  )}
+</SiteLayout>
